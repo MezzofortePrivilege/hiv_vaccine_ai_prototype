@@ -1,10 +1,11 @@
 import argparse
 import os
-from Bio import AlignIO, SeqIO # Correctly import SeqIO
+from Bio import AlignIO, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 OUTPUT_DIR = "results"
+MIN_SEQUENCE_LENGTH = 15 # MHC-II peptides are typically 15-mers
 
 def get_ref_and_map(fasta_file):
     """
@@ -98,15 +99,20 @@ def main():
             if start < len(ref_sequence) and end <= len(ref_sequence):
                 region_sequence = ref_sequence[start:end]
                 
-                # Create a SeqRecord for the FASTA output
-                record_id = f"ConservedRegion_{region_str}"
-                record = SeqRecord(Seq(region_sequence), id=record_id, description=f"Source: {os.path.basename(fasta_file)}")
-                output_records.append(record)
+                # --- ADDED LENGTH CHECK ---
+                # Only include sequences that are long enough for MHC-II prediction
+                if len(region_sequence) >= MIN_SEQUENCE_LENGTH:
+                    record_id = f"ConservedRegion_{region_str}"
+                    record = SeqRecord(Seq(region_sequence), id=record_id, description=f"Source: {os.path.basename(fasta_file)}")
+                    output_records.append(record)
+                else:
+                    print(f"Info: Skipping region '{region_str}' because its gapless length ({len(region_sequence)}) is less than {MIN_SEQUENCE_LENGTH}.")
+
             else:
                 print(f"Warning: Mapped region {start+1}-{end} is out of bounds. Skipping.")
 
         if not output_records:
-            print("No valid regions found to extract for this file.")
+            print("No valid regions of sufficient length found to extract for this file.")
             continue
 
         # Create a unique output filename for each input file
