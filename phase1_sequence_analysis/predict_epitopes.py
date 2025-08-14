@@ -1,75 +1,84 @@
 import argparse
 import pandas as pd
-from Bio import SeqIO
-from mhcflurry import Class1PresentationPredictor
+import os
+from Bio import AlignIO
+from mhcflurry import Class1AffinityPredictor
 
 # --- Configuration ---
-# A list of common MHC Class I alleles to predict binding for.
-# This list can be expanded based on target populations.
-# You can find more alleles at: http://www.iedb.org/allele.php
-COMMON_ALLELES = [
-    "HLA-A*02:01", "HLA-A*01:01", "HLA-A*03:01", "HLA-A*11:01",
-    "HLA-A*24:02", "HLA-B*07:02", "HLA-B*08:01", "HLA-B*44:02"
+# Expanded list of common MHC Class I alleles for broader coverage.
+COMPREHENSIVE_ALLELES = [
+    "HLA-A*01:01", "HLA-A*02:01", "HLA-A*02:03", "HLA-A*02:06", "HLA-A*03:01",
+    "HLA-A*11:01", "HLA-A*23:01", "HLA-A*24:02", "HLA-A*26:01", "HLA-A*30:01",
+    "HLA-A*30:02", "HLA-A*31:01", "HLA-A*32:01", "HLA-A*68:01", "HLA-A*68:02",
+    "HLA-B*07:02", "HLA-B*08:01", "HLA-B*15:01", "HLA-B*35:01", "HLA-B*40:01",
+    "HLA-B*44:02", "HLA-B*44:03", "HLA-B*51:01", "HLA-B*53:01", "HLA-B*57:01",
+    "HLA-B*58:01", "HLA-C*03:04", "HLA-C*04:01", "HLA-C*05:01", "HLA-C*06:02",
+    "HLA-C*07:01", "HLA-C*07:02"
 ]
+BINDING_THRESHOLD_NM = 500 # Peptides < 500 nM are considered potential binders.
+OUTPUT_DIR = "results"
 
-# Peptides with a predicted binding affinity < 500 nM are typically
-# considered potential binders. We'll use a stricter threshold.
-BINDING_THRESHOLD_NM = 250
-
-def extract_reference_sequence(fasta_file):
+def get_ref_and_map(fasta_file):
     """
-    Extracts the first sequence from the FASTA file to use as a reference.
-    This is typically the HXB2 reference sequence in Los Alamos DB files.
-
-    Args:
-        fasta_file (str): Path to the FASTA alignment file.
-
-    Returns:
-        str: The reference protein sequence, with gaps removed.
+    Extracts the first sequence from the alignment, creates a gapless version,
+    and returns a map of alignment coordinates to sequence coordinates.
     """
     try:
-        first_record = next(SeqIO.parse(fasta_file, "fasta"))
-        print(f"Using reference sequence: {first_record.id}")
-        return str(first_record.seq).replace('-', '')
+        alignment = AlignIO.read(fasta_file, "fasta")
+        ref_record = alignment[0]
+        print(f"\nProcessing file: {os.path.basename(fasta_file)}")
+        print(f"Using reference sequence: {ref_record.id}")
+
+        coord_map = {}
+        seq_idx = 0
+        for align_idx, char in enumerate(ref_record.seq):
+            if char != '-':
+                coord_map[align_idx] = seq_idx
+                seq_idx += 1
+        
+        ref_sequence = str(ref_record.seq).replace('-', '')
+        return ref_sequence, coord_map
+
     except FileNotFoundError:
         print(f"Error: The file '{fasta_file}' was not found.")
-        return None
+        return None, None
     except Exception as e:
-        print(f"An error occurred while reading the FASTA file: {e}")
-        return None
+        print(f"An error occurred while reading the FASTA file '{fasta_file}': {e}")
+        return None, None
 
-def parse_regions(region_strings):
+def parse_regions(region_strings, coord_map):
     """
-    Parses region strings like "142-159" into a list of (start, end) tuples.
-
-    Args:
-        region_strings (list): A list of strings, e.g., ["142-159", "161-179"].
-
-    Returns:
-        list: A list of tuples, e.g., [(141, 159), (160, 179)]. Uses 0-based index.
+    Parses region strings and converts alignment coordinates to sequence coordinates.
     """
     parsed = []
     for r in region_strings:
         try:
-            start, end = map(int, r.split('-'))
-            # Convert from 1-based inclusive to 0-based exclusive for slicing
-            parsed.append((start - 1, end))
+            align_start, align_end = map(int, r.split('-'))
+            
+            seq_start_idx = None
+            for i in range(align_start - 1, align_end):
+                if i in coord_map:
+                    seq_start_idx = coord_map[i]
+                    break
+            
+            seq_end_idx = None
+            for i in range(align_end - 1, align_start - 2, -1):
+                if i in coord_map:
+                    seq_end_idx = coord_map[i]
+                    break
+
+            if seq_start_idx is not None and seq_end_idx is not None:
+                parsed.append((seq_start_idx, seq_end_idx + 1))
+            else:
+                print(f"Warning: Region '{r}' contains only gaps in the reference. Skipping.")
+
         except ValueError:
             print(f"Warning: Could not parse region '{r}'. Skipping.")
     return parsed
 
 def generate_peptides(sequence, min_len=8, max_len=11):
     """
-    Generates all possible peptide fragments (k-mers) of specified lengths
-    from a given sequence.
-
-    Args:
-        sequence (str): The protein sequence segment.
-        min_len (int): Minimum peptide length.
-        max_len (int): Maximum peptide length.
-
-    Returns:
-        set: A set of unique peptide strings.
+    Generates all possible peptide fragments (k-mers).
     """
     peptides = set()
     for length in range(min_len, max_len + 1):
@@ -78,68 +87,89 @@ def generate_peptides(sequence, min_len=8, max_len=11):
     return peptides
 
 def main():
-    """
-    Main function to run epitope prediction.
-    """
-    parser = argparse.ArgumentParser(description="Predict MHC Class I binding epitopes in conserved regions.")
-    parser.add_argument('--file', type=str, required=True, help="Path to the FASTA alignment file.")
+    parser = argparse.ArgumentParser(description="Predict MHC Class I binding epitopes in conserved regions for all PRO files in a directory.")
+    parser.add_argument('--directory', type=str, required=True, help="Path to the directory containing FASTA alignment files.")
     parser.add_argument('--regions', nargs='+', required=True, help='List of conserved regions, e.g., "142-159" "161-179".')
-
     args = parser.parse_args()
 
-    # 1. Load the MHCflurry predictor
-    print("Loading MHCflurry predictor... (This may take a moment on first run)")
+    print("Loading MHCflurry predictor...")
     try:
-        predictor = Class1PresentationPredictor.load()
+        predictor = Class1AffinityPredictor.load()
     except Exception as e:
-        print(f"Error loading mhcflurry model: {e}")
-        print("Please ensure you have run 'mhcflurry-downloads fetch' after installation.")
+        print(f"Error loading mhcflurry model: {e}\nPlease run 'mhcflurry-downloads fetch'.")
         return
 
-    # 2. Extract the reference sequence
-    ref_sequence = extract_reference_sequence(args.file)
-    if not ref_sequence:
+    # Find all protein fasta files in the specified directory
+    try:
+        all_files = os.listdir(args.directory)
+        pro_files = [os.path.join(args.directory, f) for f in all_files if f.endswith('_PRO.fasta')]
+    except FileNotFoundError:
+        print(f"Error: Directory not found at '{args.directory}'")
         return
 
-    # 3. Parse the user-provided regions
-    conserved_regions = parse_regions(args.regions)
-
-    # 4. Generate all candidate peptides from the conserved regions
-    all_peptides = set()
-    for start, end in conserved_regions:
-        if start < len(ref_sequence) and end <= len(ref_sequence):
-            region_sequence = ref_sequence[start:end]
-            peptides_from_region = generate_peptides(region_sequence)
-            all_peptides.update(peptides_from_region)
-        else:
-            print(f"Warning: Region {start+1}-{end} is out of bounds for the reference sequence (length {len(ref_sequence)}). Skipping.")
-
-    if not all_peptides:
-        print("No valid peptides generated from the provided regions.")
+    if not pro_files:
+        print(f"No files ending with '_PRO.fasta' found in '{args.directory}'")
         return
 
-    print(f"\nGenerated {len(all_peptides)} unique peptides from conserved regions for analysis.")
+    print(f"Found {len(pro_files)} protein alignment files to process.")
 
-    # 5. Make predictions
-    print(f"Predicting binding for {COMMON_ALLELES}...")
-    predictions = predictor.predict(peptides=list(all_peptides), alleles=COMMON_ALLELES)
+    # Loop through each file and perform the analysis
+    for fasta_file in pro_files:
+        ref_sequence, coord_map = get_ref_and_map(fasta_file)
+        if not ref_sequence:
+            continue
 
-    # 6. Filter for strong binders and display results
-    strong_binders = predictions[predictions['presentation_score'] > 0.5] # mhcflurry uses a score from 0-1
-    
-    print(f"\n--- Results ---")
-    print(f"Found {len(strong_binders)} potential epitopes with a presentation score > 0.5")
+        conserved_regions = parse_regions(args.regions, coord_map)
 
-    if not strong_binders.empty:
-        # Sort for better presentation
-        strong_binders_sorted = strong_binders.sort_values(by="presentation_score", ascending=False)
+        all_peptides = set()
+        for start, end in conserved_regions:
+            if start < len(ref_sequence) and end <= len(ref_sequence):
+                region_sequence = ref_sequence[start:end]
+                peptides_from_region = generate_peptides(region_sequence)
+                all_peptides.update(peptides_from_region)
+            else:
+                print(f"Warning: Mapped region {start+1}-{end} is out of bounds. Skipping.")
+
+        if not all_peptides:
+            print("No valid peptides generated from the provided regions for this file.")
+            continue
+
+        print(f"Generated {len(all_peptides)} unique peptides for analysis.")
+        print(f"Predicting binding for {len(COMPREHENSIVE_ALLELES)} common alleles...")
         
-        # Display the top 20 hits for brevity
-        print("\nTop 20 Predicted Epitopes:")
-        print(strong_binders_sorted.head(20).to_string())
-    else:
-        print("No strong binders found with the current settings.")
+        all_predictions = []
+        peptide_list = list(all_peptides)
+        for allele in COMPREHENSIVE_ALLELES:
+            df = predictor.predict_to_dataframe(peptides=peptide_list, allele=allele)
+            all_predictions.append(df)
 
+        predictions = pd.concat(all_predictions)
+        
+        strong_binders = predictions[predictions['prediction'] < BINDING_THRESHOLD_NM]
+        
+        print(f"\n--- Results for {os.path.basename(fasta_file)} ---")
+        print(f"Found {len(strong_binders)} potential epitopes with binding affinity < {BINDING_THRESHOLD_NM} nM")
+
+        if not strong_binders.empty:
+            strong_binders_sorted = strong_binders.sort_values(by="prediction", ascending=True)
+            
+            os.makedirs(OUTPUT_DIR, exist_ok=True)
+            
+            # Create a unique output filename for each input file
+            base_name = os.path.basename(fasta_file).replace('.fasta', '')
+            output_filename = os.path.join(OUTPUT_DIR, f"predicted_epitopes_{base_name}.csv")
+            
+            strong_binders_sorted.to_csv(output_filename, index=False)
+            print(f"All strong binders saved to '{output_filename}'")
+
+            print("\nTop 20 Predicted Epitopes (sorted by best affinity):")
+            print(strong_binders_sorted.head(20).to_string(
+                columns=["peptide", "allele", "prediction"],
+                header=["Peptide", "MHC Allele", "Affinity (nM)"],
+                index=False
+            ))
+        else:
+            print("No strong binders found with the current settings for this file.")
 
 if __name__ == "__main__":
     main()
