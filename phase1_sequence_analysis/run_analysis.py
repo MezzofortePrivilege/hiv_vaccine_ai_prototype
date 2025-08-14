@@ -20,23 +20,17 @@ def calculate_shannon_entropy(alignment):
     print(f"Analyzing alignment with {num_sequences} sequences and length {alignment_length}...")
 
     for i in range(alignment_length):
-        # Get all characters in the current column
         column = alignment[:, i]
-        
-        # Count the frequency of each amino acid (or nucleotide)
-        # We ignore gaps ('-') in the calculation
         frequencies = {}
         for char in column:
             if char != '-':
                 frequencies[char] = frequencies.get(char, 0) + 1
         
-        # Normalize frequencies
         num_valid_chars = sum(frequencies.values())
         if num_valid_chars == 0:
-            entropies.append(0) # Column with only gaps
+            entropies.append(0)
             continue
 
-        # Calculate Shannon entropy: H = -sum(p_i * log2(p_i))
         entropy = 0.0
         for char in frequencies:
             p_i = frequencies[char] / num_valid_chars
@@ -48,9 +42,10 @@ def calculate_shannon_entropy(alignment):
     print("Entropy calculation complete.")
     return entropies
 
-def find_conserved_regions(entropies, threshold, min_length=5):
+def find_conserved_regions(entropies, threshold, min_length=15):
     """
     Identifies contiguous regions where the entropy is below a certain threshold.
+    Default min_length is now 15, suitable for MHC-II epitopes.
 
     Args:
         entropies (list): A list of entropy values.
@@ -73,9 +68,8 @@ def find_conserved_regions(entropies, threshold, min_length=5):
             in_region = False
             end = i - 1
             if (end - start + 1) >= min_length:
-                conserved_regions.append((start + 1, end + 1)) # Use 1-based indexing for output
+                conserved_regions.append((start + 1, end + 1))
 
-    # Check if the last position was in a conserved region
     if in_region:
         end = len(entropies) - 1
         if (end - start + 1) >= min_length:
@@ -90,11 +84,11 @@ def main():
     parser = argparse.ArgumentParser(description="Analyze HIV sequence conservation.")
     parser.add_argument('--file', type=str, required=True, help="Path to the FASTA alignment file.")
     parser.add_argument('--threshold', type=float, default=0.2, help="Entropy threshold for defining a conserved region. Lower is more conserved.")
+    parser.add_argument('--min_length', type=int, default=15, help="Minimum length of a conserved region to report.")
     
     args = parser.parse_args()
 
     try:
-        # Read the alignment file
         alignment = AlignIO.read(args.file, "fasta")
     except FileNotFoundError:
         print(f"Error: The file '{args.file}' was not found.")
@@ -103,18 +97,14 @@ def main():
         print(f"An error occurred while reading the alignment file: {e}")
         return
 
-    # Calculate entropy
     entropies = calculate_shannon_entropy(alignment)
+    conserved_regions = find_conserved_regions(entropies, args.threshold, args.min_length)
 
-    # Find conserved regions
-    conserved_regions = find_conserved_regions(entropies, args.threshold)
-
-    # Print results
     print(f"\n--- Results ---")
-    print(f"Found {len(conserved_regions)} conserved regions with entropy < {args.threshold}:")
+    print(f"Found {len(conserved_regions)} conserved regions with entropy < {args.threshold} and minimum length {args.min_length}:")
     if conserved_regions:
         for start, end in conserved_regions:
-            print(f"  - Region: {start} - {end} (Length: {end - start + 1})")
+            print(f"  - Region: {start}-{end} (Length: {end - start + 1})")
     else:
         print("No conserved regions found at this threshold. Try increasing it.")
 
