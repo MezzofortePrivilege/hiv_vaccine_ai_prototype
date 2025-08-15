@@ -1,0 +1,34 @@
+# NetMHCIIpan version 4.0
+
+# Input is in FASTA format
+
+# Peptide length 15
+
+# Prediction Mode: EL
+
+# Threshold for Strong binding peptides (%Rank)	1%
+# Threshold for Weak binding peptides (%Rank)	5%
+
+# Allele: DRB1_0801
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Pos           MHC              Peptide   Of        Core  Core_Rel        Identity      Score_EL %Rank_EL Exp_Bind  BindLevel
+--------------------------------------------------------------------------------------------------------------------------------------------
+   1     DRB1_0801      YDTEVHNVWATHACV    4   VHNVWATHA     0.687 ConservedRegion      0.017079    62.61       NA       
+   2     DRB1_0801      DTEVHNVWATHACVP    3   VHNVWATHA     0.640 ConservedRegion      0.029814    50.66       NA       
+   3     DRB1_0801      TEVHNVWATHACVPT    3   HNVWATHAC     0.340 ConservedRegion      0.022581    56.68       NA       
+   4     DRB1_0801      EVHNVWATHACVPTD    5   WATHACVPT     0.493 ConservedRegion      0.031819    49.18       NA       
+   5     DRB1_0801      VHNVWATHACVPTDP    4   WATHACVPT     0.640 ConservedRegion      0.058631    36.02       NA       
+--------------------------------------------------------------------------------------------------------------------------------------------
+Number of strong binders: 0 Number of weak binders: 0
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+# Allele: DRB1_0801
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Pos           MHC              Peptide   Of        Core  Core_Rel        Identity      Score_EL %Rank_EL Exp_Bind  BindLevel
+--------------------------------------------------------------------------------------------------------------------------------------------
+   1     DRB1_0801      SLIEESQNQQEKNEQ    2   IEESQNQQE     0.800 ConservedRegion      0.059962    35.59       NA       
+   2     DRB1_0801      LIEESQNQQEKNEQE    5   QNQQEKNEQ     0.427 ConservedRegion      0.023777    55.49       NA       
+   3     DRB1_0801      IEESQNQQEKNEQEL    4   QNQQEKNEQ     0.667 ConservedRegion      0.021462    57.79       NA       
+--------------------------------------------------------------------------------------------------------------------------------------------
+Number of strong binders: 0 Number of weak binders: 0
+--------------------------------------------------------------------------------------------------------------------------------------------
