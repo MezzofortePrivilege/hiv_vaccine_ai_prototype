@@ -1,0 +1,23 @@
+# NetMHCIIpan version 4.0
+
+# Input is in FASTA format
+
+# Peptide length 15
+
+# Prediction Mode: EL
+
+# Threshold for Strong binding peptides (%Rank)	1%
+# Threshold for Weak binding peptides (%Rank)	5%
+
+# Allele: DRB1_0404
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Pos           MHC              Peptide   Of        Core  Core_Rel        Identity      Score_EL %Rank_EL Exp_Bind  BindLevel
+--------------------------------------------------------------------------------------------------------------------------------------------
+   1     DRB1_0404      DTNTNSSSGRMIMEK    3   TNSSSGRMI     0.433 ConservedRegion      0.000359    93.93       NA       
+   2     DRB1_0404      TNTNSSSGRMIMEKG    6   SGRMIMEKG     0.233 ConservedRegion      0.000680    88.37       NA       
+   3     DRB1_0404      NTNSSSGRMIMEKGE    5   SGRMIMEKG     0.547 ConservedRegion      0.001170    81.65       NA       
+   4     DRB1_0404      TNSSSGRMIMEKGEI    4   SGRMIMEKG     0.613 ConservedRegion      0.001404    79.00       NA       
+   5     DRB1_0404      NSSSGRMIMEKGEIK    3   SGRMIMEKG     0.280 ConservedRegion      0.003028    66.41       NA       
+--------------------------------------------------------------------------------------------------------------------------------------------
+Number of strong binders: 0 Number of weak binders: 0
+--------------------------------------------------------------------------------------------------------------------------------------------

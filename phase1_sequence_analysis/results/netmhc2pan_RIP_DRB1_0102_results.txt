@@ -1,0 +1,12 @@
+# Allele: DRB1_0102
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Pos           MHC              Peptide   Of        Core  Core_Rel        Identity      Score_EL %Rank_EL Exp_Bind  BindLevel
+--------------------------------------------------------------------------------------------------------------------------------------------
+   1     DRB1_0102      DTNTNSSSGRMIMEK    3   TNSSSGRMI     0.960 ConservedRegion      0.009051    44.38       NA       
+   2     DRB1_0102      TNTNSSSGRMIMEKG    2   TNSSSGRMI     0.813 ConservedRegion      0.003751    61.52       NA       
+   3     DRB1_0102      NTNSSSGRMIMEKGE    1   TNSSSGRMI     0.447 ConservedRegion      0.000841    87.79       NA       
+   4     DRB1_0102      TNSSSGRMIMEKGEI    4   SGRMIMEKG     0.513 ConservedRegion      0.000389    95.00       NA       
+   5     DRB1_0102      NSSSGRMIMEKGEIK    6   MIMEKGEIK     0.833 ConservedRegion      0.006453    50.71       NA       
+--------------------------------------------------------------------------------------------------------------------------------------------
+Number of strong binders: 0 Number of weak binders: 0
+--------------------------------------------------------------------------------------------------------------------------------------------
